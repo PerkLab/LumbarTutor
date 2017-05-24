@@ -1,0 +1,57 @@
+/*
+#8A3033 is dark red
+#EADEDA is off-white
+*/
+
+QWidget {
+  color: black;
+  font-size: 16pt;
+  border-width: 3px;
+  border-radius: 5px;
+  border-style: outset;
+  background-color: #EADEDA;
+  border-color: gray;
+  height: 36px;
+}
+
+QAbstractButton:pressed {
+  background-color: gray;
+}
+
+
+/* Special cases */
+QFrame {
+  background-color: #8A3033;
+  border-width: 0px;
+  border-radius: 0px;
+  color: white;
+}
+
+QLabel {
+  background-color: #8A3033;
+  border-width: 0px;
+}
+
+QDockWidget,
+QDockWidget:title {
+  color: white;
+  background-color: #8A3033;
+  text-align: center;
+  font-size: 20pt;
+}
+
+QTableWidget {
+  background: #EADEDA;
+  font-size: 12pt;
+  color: black;
+}
+
+QHeaderView {
+  background-color: #EADEDA;
+  font-size: 14pt;
+  color: black;
+}
+
+QListView {
+  background-color: #EADEDA;
+}
