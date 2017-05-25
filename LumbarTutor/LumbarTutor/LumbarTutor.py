@@ -991,10 +991,12 @@ class LumbarTutorGuidelet(Guidelet):
         usMarkersProperties[ "MarkActor" ].GetProperty().SetColor( DOT_COLOR )
         usMarkersProperties[ "Renderer" ].AddActor( usMarkersProperties[ "MarkActor" ] )
 
+      mSize = [ 0, 0 ]
+      usMarkersProperties[ "MarkActor" ].GetSize( usMarkersProperties[ "Renderer" ], mSize )
       mPosition_IJK = [ volumeDimensions[ 0 ], 0, 0 ] # Assumes MF ultrasound orientation
       mPosition_XY = [ 0, 0, 0 ]
       ijkToXYTransform.TransformPoint( mPosition_IJK, mPosition_XY )
-      usMarkersProperties[ "MarkActor" ].SetPosition( mPosition_XY[ 0 ], mPosition_XY[ 1 ] )
+      usMarkersProperties[ "MarkActor" ].SetPosition( mPosition_XY[ 0 ] - mSize[ 0 ], mPosition_XY[ 1 ] - mSize[ 1 ] )
 
       # Rendering is already taken care of
 
@@ -1021,8 +1023,8 @@ class LumbarTutorGuidelet(Guidelet):
     
     vrdLogic.SetDriverForSlice(imageNodeID, sliceNode)
     vrdLogic.SetModeForSlice(slicer.vtkSlicerVolumeResliceDriverLogic.MODE_TRANSVERSE, sliceNode)
-    vrdLogic.SetFlipForSlice(True, sliceNode)
-    vrdLogic.SetRotationForSlice(0, sliceNode)
+    vrdLogic.SetFlipForSlice(False, sliceNode)
+    vrdLogic.SetRotationForSlice(180, sliceNode) # 180 degrees
     
     sliceLogic.FitSliceToAll()
   
