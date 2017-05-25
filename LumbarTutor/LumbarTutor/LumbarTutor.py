@@ -246,10 +246,10 @@ class LumbarTutorGuidelet(Guidelet):
     # Transforms to be computed from calibration
     self.probeModelToProbe = slicer.util.getNode('ProbeModelToProbe')
     if not self.probeModelToProbe:
-      probeToReferenceFilePath = os.path.join(moduleDir, 'Resources', 'ProbeModelToProbe_L12.h5')
+      probeToReferenceFilePath = os.path.join(moduleDir, 'Resources', 'ProbeModelToProbe_L14-5.h5')
       [success, self.probeModelToProbe] = slicer.util.loadTransform(probeToReferenceFilePath, returnNode = True)
       if success == False:
-        logging.error('Could not read probe model to probe transform for Telemed L12!')
+        logging.error('Could not read probe model to probe transform for Sonix L14-5!')
       else:
         self.probeModelToProbe.SetName("ProbeModelToProbe")
 
@@ -267,7 +267,7 @@ class LumbarTutorGuidelet(Guidelet):
 
     self.usProbeModel = slicer.util.getNode('UsProbe')
     if not self.usProbeModel:
-      modelFilePath = os.path.join(moduleDir, 'Resources', 'Telemed_L12.stl')
+      modelFilePath = os.path.join(moduleDir, 'Resources', 'Probe_L14-5_38.stl')
       [success, self.usProbeModel] = slicer.util.loadModel(modelFilePath, returnNode = True)
       self.usProbeModel.SetName('UsProbe')
       self.usProbeModel.GetDisplayNode().SetColor(0.9, 0.9, 0.9)
