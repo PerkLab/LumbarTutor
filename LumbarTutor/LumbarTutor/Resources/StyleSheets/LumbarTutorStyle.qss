@@ -55,3 +55,7 @@ QHeaderView {
 QListView {
   background-color: #EADEDA;
 }
+
+QScrollBar {
+  width: 35px;
+}
