@@ -85,7 +85,6 @@
         <Transform Name="ProbeToReference" />
         <Transform Name="NeedleToReference" />
         <Transform Name="ImageToProbe" />
-        <Transform Name="NeedleToProbe" />
       </TransformNames>
       <ImageNames>
         <Image Name="Ultrasound" EmbeddedTransformToFrame="Ultrasound" />
