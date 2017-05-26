@@ -80,9 +80,9 @@ class LumbarTutorLogic(GuideletLogic):
     self.updateUserPreferencesFromSettings( settingsList, 'Default' ) # Copy values from the default configuration
     
     settingsList[ 'DisplayNeedleModel' ] = 'False'
-    settingsList[ 'CalibrationLayout' ] = Guidelet.VIEW_ULTRASOUND_DUAL_3D
+    settingsList[ 'CalibrationLayout' ] = Guidelet.VIEW_ULTRASOUND_CAM_3D
     settingsList[ 'ProcedureLayout' ] = Guidelet.VIEW_ULTRASOUND
-    settingsList[ 'ResultsLayout' ] = Guidelet.VIEW_ULTRASOUND_DUAL_3D
+    settingsList[ 'ResultsLayout' ] = Guidelet.VIEW_ULTRASOUND_CAM_3D
 
     self.updateSettings( settingsList, 'No 3D Guidance' )
   
