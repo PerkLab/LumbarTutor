@@ -193,7 +193,7 @@ class LumbarTutorGuidelet(Guidelet):
     self.spinCalibrationButton.connect('clicked(bool)', self.onSpinCalibrationClicked)    
     self.pivotSamplingTimer.connect('timeout()', self.onPivotSamplingTimeout)
     
-    self.viewAlignmentButton.connect('clicked(bool)', self.onViewAlignmentClicked)
+    self.viewAlignmentButton.connect('clicked()', self.align3DView)
     
     self.ultrasoundSnapshotButton.connect('clicked()', self.onUltrasoundSnapshotClicked)
     self.clearSnapshotsButton.connect('clicked()', self.onClearSnapshotsClicked)
@@ -374,7 +374,7 @@ class LumbarTutorGuidelet(Guidelet):
     self.spinCalibrationButton.disconnect('clicked(bool)', self.onSpinCalibrationClicked)
     self.pivotSamplingTimer.disconnect('timeout()', self.onPivotSamplingTimeout)
     
-    self.viewAlignmentButton.disconnect('clicked(bool)', self.onViewAlignmentClicked)
+    self.viewAlignmentButton.disconnect('clicked(bool)', self.align3DView)
 
     self.ultrasoundSnapshotButton.disconnect('clicked()', self.onUltrasoundSnapshotClicked)
     self.clearSnapshotsButton.disconnect('clicked()', self.onClearSnapshotsClicked)
@@ -528,7 +528,7 @@ class LumbarTutorGuidelet(Guidelet):
     logging.debug('Spin calibration completed. RMSE = {0:.3f} mm'.format(self.pivotCalibrationLogic.GetSpinRMSE()))
 
     
-  def onViewAlignmentClicked(self, toggled):
+  def align3DView(self):
     # We want a view from the posterior with the superior up and the left left
     # The spine should be centred
     spineCenter_RAS = [ 0, 0, 0 ]
@@ -828,7 +828,9 @@ class LumbarTutorGuidelet(Guidelet):
     if ( selectedReferenceToRas is None ):
       self.referenceToRas.SetMatrixTransformToParent( vtk.vtkMatrix4x4() )
     else:
-      self.referenceToRas.SetMatrixTransformToParent( selectedReferenceToRas.GetMatrixTransformToParent() )      
+      self.referenceToRas.SetMatrixTransformToParent( selectedReferenceToRas.GetMatrixTransformToParent() )
+
+    self.align3DView()      
     
 
   def getCamera(self, viewName):
