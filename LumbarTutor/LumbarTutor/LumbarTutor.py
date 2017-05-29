@@ -78,8 +78,7 @@ class LumbarTutorLogic(GuideletLogic):
   def addValuesToNo3DGuidanceConfiguration(self):
     settingsList = {}
     self.updateUserPreferencesFromSettings( settingsList, 'Default' ) # Copy values from the default configuration
-    
-    settingsList[ 'DisplayNeedleModel' ] = 'False'
+
     settingsList[ 'CalibrationLayout' ] = Guidelet.VIEW_ULTRASOUND_CAM_3D
     settingsList[ 'ProcedureLayout' ] = Guidelet.VIEW_ULTRASOUND
     settingsList[ 'ResultsLayout' ] = Guidelet.VIEW_ULTRASOUND_CAM_3D
@@ -342,13 +341,6 @@ class LumbarTutorGuidelet(Guidelet):
     sequenceBrowserToolBars = slicer.util.mainWindow().findChildren( "qMRMLSequenceBrowserToolBar" )
     for toolBar in sequenceBrowserToolBars:
       toolBar.connect('visibilityChanged(bool)', partial( self.setSequenceBrowserToolBarsVisible, False ) )
-
-    # Show the slice intersections for the needle
-    if( self.needleModel is not None and self.needleModel.GetDisplayNode() is not None ):
-      if ( self.parameterNode.GetParameter('DisplayNeedleModel') == 'False' ):
-        self.needleModel.GetDisplayNode().SetSliceIntersectionVisibility(False)
-      else:
-        self.needleModel.GetDisplayNode().SetSliceIntersectionVisibility(True)
 
     # Hide slice view annotations (patient name, scale, color bar, etc.) as they
     # decrease reslicing performance by 20%-100%
@@ -855,6 +847,22 @@ class LumbarTutorGuidelet(Guidelet):
       self.selectView(self.navigationView) # This automatically sets the view to ultrasound only if the string is empty. Here, we want it to do nothing.
 
       
+  def onViewSelect(self, layoutIndex):
+    Guidelet.onViewSelect(self, layoutIndex)
+    
+    if ( not hasattr( self, 'needleModel' ) ):
+      return
+      
+    if ( self.needleModel is None or self.needleModel.GetDisplayNode() is None ):
+      return
+    
+    text = self.viewSelectorComboBox.currentText
+    if ( text == self.VIEW_ULTRASOUND ):
+      self.needleModel.GetDisplayNode().SetSliceIntersectionVisibility(False)
+    else:
+      self.needleModel.GetDisplayNode().SetSliceIntersectionVisibility(True)
+
+      
   def stopSequenceBrowserPlayback(self):
     sequenceBrowserNodes = slicer.mrmlScene.GetNodesByClass("vtkMRMLSequenceBrowserNode")
     for i in xrange( sequenceBrowserNodes.GetNumberOfItems() ):
@@ -1073,6 +1081,7 @@ class LumbarTutorGuidelet(Guidelet):
     browserNode.SetSaveChanges( None, False )
     browserNode.EndModify( modifiedFlag )
 
+    browserNode.SetRecordMasterOnly(True)
     browserNode.SetRecordingActive(True)
 
     
