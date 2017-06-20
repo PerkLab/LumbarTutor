@@ -312,8 +312,8 @@ class LumbarTutorGuidelet(Guidelet):
       self.webcam_Webcam.SetName('Webcam_Webcam')
       slicer.mrmlScene.AddNode(self.webcam_Webcam)
 
-    self.displayImageInSliceViewer(self.ultrasound_Ultrasound.GetID(), "Red")
-    self.displayImageInSliceViewer(self.webcam_Webcam.GetID(), "Yellow")
+    self.displayImageInSliceViewer(self.ultrasound_Ultrasound.GetID(), "Red", False, 180)
+    self.displayImageInSliceViewer(self.webcam_Webcam.GetID(), "Yellow", True, 0)
     
     # Load the spine "scenes"
     logging.debug('Create spine scenes')
@@ -533,13 +533,13 @@ class LumbarTutorGuidelet(Guidelet):
       
     # Setup the cameras for the 3D views
     # Implicit assumption that the spine is rotationally aligned with the RAS coordinate frame
-    CAMERA_DISTANCE = 500 #mm # Controls the "zoom"
+    CAMERA_DISTANCE = 600 #mm # Controls the "zoom"
     CAMERA_CLIPPING_RANGE = [ 0.1, 1000 ] # This is the default clipping range. Change it if you change the camera distance.
     cameraNodes = slicer.mrmlScene.GetNodesByClass( "vtkMRMLCameraNode" )
     if ( cameraNodes.GetNumberOfItems() > 0 ):
       camera0 = cameraNodes.GetItemAsObject( 0 )
-      camera0.SetFocalPoint( spineCenter_RAS[ 0 ], spineCenter_RAS[ 1 ], spineCenter_RAS[ 2 ] )
-      camera0.SetPosition( spineCenter_RAS[ 0 ], spineCenter_RAS[ 1 ] - CAMERA_DISTANCE, spineCenter_RAS[ 2 ] )
+      camera0.SetFocalPoint( spineCenter_RAS[ 0 ], spineCenter_RAS[ 1 ] - 50, spineCenter_RAS[ 2 ] )
+      camera0.SetPosition( spineCenter_RAS[ 0 ] - CAMERA_DISTANCE, spineCenter_RAS[ 1 ] - 50, spineCenter_RAS[ 2 ] )
       camera0.SetViewUp( 0, 0, 1 )
       camera0.GetCamera().SetClippingRange( CAMERA_CLIPPING_RANGE )      
     
@@ -692,6 +692,10 @@ class LumbarTutorGuidelet(Guidelet):
     self.resultsCollapsibleLayout.addWidget(qt.QLabel()) # Blank row for spacing between table and buttons.
     self.resultsCollapsibleLayout.addWidget(self.metricsTableWidget)
     self.resultsCollapsibleLayout.addWidget(qt.QLabel()) # Blank row for spacing between table and buttons.
+    
+    self.captureVideoButton = qt.QPushButton( "Capture video" )
+    self.resultsControlsLayout.addRow(self.captureVideoButton)
+    self.captureVideoButton.connect('clicked(bool)', self.onCaptureVideoButtonClicked)
 
 
   def onRecordingNodeSelected(self):
@@ -754,8 +758,8 @@ class LumbarTutorGuidelet(Guidelet):
 
 
   def onCalculateMetricsButtonClicked(self):
-    selectedSequenceBrowserNode = self.recordingComboBox.currentNode()
-    self.perkEvaluatorNode.SetTrackedSequenceBrowserNodeID( selectedSequenceBrowserNode.GetID() )
+    sequenceBrowserNode = self.recordingComboBox.currentNode()
+    self.perkEvaluatorNode.SetTrackedSequenceBrowserNodeID( sequenceBrowserNode.GetID() )
 
     peLogic = slicer.modules.perkevaluator.logic()
     if (peLogic is None):
@@ -763,6 +767,52 @@ class LumbarTutorGuidelet(Guidelet):
       return
 
     peLogic.ComputeMetrics(self.perkEvaluatorNode)
+    
+    
+  def onCaptureVideoButtonClicked(self):
+    sequenceBrowserNode = self.recordingComboBox.currentNode()
+    masterSequenceNode = sequenceBrowserNode.GetMasterSequenceNode()
+
+    try:
+      import ScreenCapture
+      scLogic = ScreenCapture.ScreenCaptureLogic()
+    except:
+      logging.error( "LumbarTutorLogic::onCaptureVideoButtonClicked could not find Screen Capture logic." )
+      return
+      
+    try:
+      threeDViewNode = slicer.app.layoutManager().threeDWidget( 0 ).threeDView().mrmlViewNode()
+    except:
+      logging.error( "LumbarTutorLogic::onCaptureVideoButtonClicked could not find 3D view node Capture logic." )
+      return
+    
+    sequenceBrowserNode.Modified() # Force update the images
+    # Make some adjustments to the views
+    self.ultrasound_Ultrasound.GetDisplayNode().SetAutoWindowLevel( 0 )
+    self.ultrasound_Ultrasound.GetDisplayNode().SetWindowLevelMinMax( 0, 120 )
+    self.webcam_Webcam.GetDisplayNode().SetAutoWindowLevel( 0 )
+    self.webcam_Webcam.GetDisplayNode().SetWindowLevelMinMax( 0, 256 )
+    # These aren't strictly necessary, but nice to confirm
+    self.displayImageInSliceViewer(self.ultrasound_Ultrasound.GetID(), "Red", False, 180)
+    self.displayImageInSliceViewer(self.webcam_Webcam.GetID(), "Yellow", True, 0)
+    
+    # Parameters for capturing    
+    startIndex = 0
+    endIndex = masterSequenceNode.GetNumberOfDataNodes()
+    steps = endIndex - startIndex
+    outputDir = self.parameterNode.GetParameter('SavedScenesDirectory')
+    imageFileNamePattern = scLogic.getRandomFilePattern()
+    captureAllViews = True
+
+    # Parameters for conversion to video
+    fps = steps / ( float( masterSequenceNode.GetNthIndexValue( steps - 1 ) ) - float( masterSequenceNode.GetNthIndexValue( 0 ) ) )
+    videoFormat = scLogic.videoFormatPresets[ 2 ][ "extraVideoOptions" ] # mpeg format
+    videoName = sequenceBrowserNode.GetName() + ".mp4"
+
+    # Capture and create the video
+    scLogic.captureSequence( threeDViewNode, sequenceBrowserNode, startIndex, endIndex, steps, outputDir, imageFileNamePattern, captureAllViews )
+    scLogic.createVideo( fps, videoFormat, outputDir, imageFileNamePattern, videoName )
+    scLogic.deleteTemporaryFiles( outputDir, imageFileNamePattern, steps )
 
 
   def onCalibrationSetupPanelToggled(self, toggled):
@@ -1011,7 +1061,7 @@ class LumbarTutorGuidelet(Guidelet):
       # Rendering is already taken care of
 
     
-  def displayImageInSliceViewer(self, imageNodeID, sliceName):
+  def displayImageInSliceViewer(self, imageNodeID, sliceName, flip, rotate):
     # First, find the volume reslice driver logic
     sliceWidget = slicer.app.layoutManager().sliceWidget( sliceName )
     if ( sliceWidget is None ):
@@ -1033,8 +1083,8 @@ class LumbarTutorGuidelet(Guidelet):
     
     vrdLogic.SetDriverForSlice(imageNodeID, sliceNode)
     vrdLogic.SetModeForSlice(slicer.vtkSlicerVolumeResliceDriverLogic.MODE_TRANSVERSE, sliceNode)
-    vrdLogic.SetFlipForSlice(False, sliceNode)
-    vrdLogic.SetRotationForSlice(180, sliceNode) # 180 degrees
+    vrdLogic.SetFlipForSlice(flip, sliceNode)
+    vrdLogic.SetRotationForSlice(rotate, sliceNode) # 180 degrees
     
     sliceLogic.FitSliceToAll()
   
