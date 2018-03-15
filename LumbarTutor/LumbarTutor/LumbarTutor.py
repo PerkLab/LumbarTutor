@@ -4,7 +4,7 @@ from functools import partial
 
 from Guidelet import GuideletLoadable, GuideletLogic, GuideletTest, GuideletWidget
 from Guidelet import Guidelet
-from PerkTutorCouchDB import PerkTutorCouchDBLogic
+import PerkTutorCouchDB
 import logging
 import time
 
@@ -39,10 +39,52 @@ class LumbarTutorWidget(GuideletWidget):
   def addLauncherWidgets(self):
     GuideletWidget.addLauncherWidgets(self)
 
+    # Launcher settings for databases
+    self.databaseSettingsGroupBox = ctk.ctkCollapsibleGroupBox()
+    self.databaseSettingsGroupBox.setTitle( "Database settings" )
+    self.databaseSettingsGroupBox.collapsed = True
+    self.databaseSettingsLayout = qt.QFormLayout( self.databaseSettingsGroupBox )
+    self.launcherFormLayout.addRow( self.databaseSettingsGroupBox )
+
+    self.databaseFullRemoteAddressLineEdit = qt.QLineEdit()
+    self.databaseFullRemoteAddressLineEdit.setEchoMode( qt.QLineEdit.Password )
+    self.databaseSettingsLayout.addRow( "Full remote database address", self.databaseFullRemoteAddressLineEdit )
+
+    self.fileServerSessionLineEdit = qt.QLineEdit()
+    self.databaseSettingsLayout.addRow( "File server session name", self.fileServerSessionLineEdit )
+
+    self.fileServerClientLineEdit = qt.QLineEdit()
+    self.databaseSettingsLayout.addRow( "File server client path", self.fileServerClientLineEdit )
+
+    settings = slicer.app.userSettings()
+    self.databaseFullRemoteAddressLineEdit.setText( settings.value( self.moduleName + "/Configurations/" + self.selectedConfigurationName + "/DatabaseFullRemoteAddress" ) )
+    self.fileServerSessionLineEdit.setText( settings.value( self.moduleName + "/Configurations/" + self.selectedConfigurationName + "/FileServerSession" ) )
+    self.fileServerClientLineEdit.setText( settings.value( self.moduleName + "/Configurations/" + self.selectedConfigurationName + "/FileServerClient" ) )
+
+    self.databaseFullRemoteAddressLineEdit.connect( 'editingFinished()', self.onDatabaseFullRemoteAddressEdited )
+    self.fileServerSessionLineEdit.connect( 'editingFinished()', self.onFileServerSessionEdited )
+    self.fileServerClientLineEdit.connect( 'editingFinished()', self.onFileServerClientEdited )
+
 
   def onConfigurationChanged(self, selectedConfigurationName):
     GuideletWidget.onConfigurationChanged(self, selectedConfigurationName)
-    #settings = slicer.app.userSettings()
+
+    settings = slicer.app.userSettings()
+    self.databaseFullRemoteAddressLineEdit.setText( settings.value( self.moduleName + "/Configurations/" + self.selectedConfigurationName + "/DatabaseFullRemoteAddress" ) )
+    self.fileServerSessionLineEdit.setText( settings.value( self.moduleName + "/Configurations/" + self.selectedConfigurationName + "/FileServerSession" ) )
+    self.fileServerClientLineEdit.setText( settings.value( self.moduleName + "/Configurations/" + self.selectedConfigurationName + "/FileServerClient" ) )
+
+
+  def onDatabaseFullRemoteAddressEdited( self ):
+    self.guideletLogic.updateSettings( { "DatabaseFullRemoteAddress": str( self.databaseFullRemoteAddressLineEdit.text ) }, self.selectedConfigurationName )
+
+
+  def onFileServerSessionEdited( self ):
+    self.guideletLogic.updateSettings( { "FileServerSession": str( self.fileServerSessionLineEdit.text ) }, self.selectedConfigurationName )
+
+
+  def onFileServerClientEdited( self ):
+    self.guideletLogic.updateSettings( { "FileServerClient": str( self.fileServerClientLineEdit.text ) }, self.selectedConfigurationName )
 
 
   def createGuideletInstance(self):
@@ -72,28 +114,9 @@ class LumbarTutorLogic(GuideletLogic):
     settingsDict[ 'RecordingFilenamePrefix' ] = 'LumbarTutorRec-'
     settingsDict[ 'SavedScenesDirectory' ] = os.path.join( moduleDir, 'SavedScenes' ) #overwrites the default setting param of base
     settingsDict[ 'UltrasoundBrightnessControl' ] = '' #overwrites the default setting param of base
-    # Do not need to set the remote database name at the moment
-    settingsDict[ 'FileServerSession' ] = "perktutorcouchdb@perkdata.cs.queensu.ca"
     settingsDict[ 'FileServerLocalDirectory' ] = os.path.join( slicer.app.temporaryPath, "LumbarTutor" )
-    settingsDict[ 'FileServerClient' ] = "\"C:\Program Files (x86)\WinSCP\WinSCP.com\""
     
     self.updateSettings( settingsDict, 'Default' )
-  
-
-  # This function allows us to conveniently copy settings from another configuration (e.g. Default)
-  # TODO: Is there something like this already in the GuideletLogic class?
-  def updateUserPreferencesFromSettings( self, settingsNameValueMap, configurationName = None ):
-    settings = slicer.app.userSettings()
-    
-    if not configurationName:
-      groupString = self.moduleName
-    else:
-      groupString = self.moduleName + '/Configurations/' + configurationName
-      
-    settings.beginGroup( groupString )
-    for name in settings.allKeys():
-      settingsNameValueMap[ name ] = settings.value( name )
-    settings.endGroup()
 
 
 
@@ -481,17 +504,20 @@ class LumbarTutorGuidelet( Guidelet ):
     date = ( "Date", time.strftime( "%Y/%m/%d-%H:%M:%S" ) )
     metricsComputed = ( "MetricsComputed", False )
     dataFields = dict( [ userID, studyID, trialID, skillLevel, status, date, metricsComputed ] ) #creates dict from list of tuples, format for saving
-    
-    self.ptcLogic.uploadSession( dataFields, browserNode )
+
+    localDirectory = self.parameterNode.GetParameter( "FileServerLocalDirectory" )
+    serverSessionName = self.parameterNode.GetParameter( "FileServerSession" )
+    serverFtpClient = self.parameterNode.GetParameter( "FileServerClient" )
+    self.ptcLogic.uploadSession( dataFields, browserNode, localDirectory, serverSessionName, serverFtpClient )
     
     
   def createCouchDBLogic( self ):
-    self.ptcLogic = PerkTutorCouchDBLogic()
-    self.ptcLogic.moduleName = self.logic.moduleName + "/Configurations/" + self.configurationName # Settings will be saved under this name
+    self.ptcLogic = PerkTutorCouchDB.PerkTutorCouchDBLogic()
 
     # Attempt to initialize the database if not already initialized
+    fullRemoteAddress = self.parameterNode.GetParameter( "DatabaseFullRemoteAddress" )
     try:
-      self.ptcLogic.initializeDatabaseFromSettings()
+      self.ptcLogic.updateDatabase( PerkTutorCouchDB.PERK_TUTOR_DATABASE_NAME, fullRemoteAddress )
     except Exception as e:
       logging.warning( e )
     
