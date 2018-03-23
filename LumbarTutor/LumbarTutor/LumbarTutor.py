@@ -270,13 +270,6 @@ class LumbarTutorGuidelet( Guidelet ):
       self.spineCT.SetName( 'SpineCT' )
       slicer.mrmlScene.AddNode( self.spineCT )
 
-    self.displayImageInSliceViewer( self.spineCT.GetID(), "Red" )
-    self.displayImageInSliceViewer( self.spineCT.GetID(), "Yellow" )
-    self.displayImageInSliceViewer( self.spineCT.GetID(), "Green" )
-    self.displayImageSliceIn3D( "Red", True )
-    self.displayImageSliceIn3D( "Yellow", True )
-    self.displayImageSliceIn3D( "Green", True )
-    
     # Load the spine "scenes"
     # Note: There should be only one spine scene
     logging.debug( 'Create spine scenes' )
@@ -298,6 +291,7 @@ class LumbarTutorGuidelet( Guidelet ):
     
     # Setup the views of the scene appropriately
     self.setLayoutForCurrentUser()
+    self.showModelsInSliceViewers()
     
     # Display the spine model
     selectedTissueModel = None
@@ -323,6 +317,14 @@ class LumbarTutorGuidelet( Guidelet ):
       self.spineCT.Copy( slicer.vtkMRMLScalarVolumeNode() )
     else:
       self.spineCT.Copy( selectedSpineCT )
+
+    # Display the CT in the image slice viewers
+    self.displayImageInSliceViewer( self.spineCT.GetID(), "Red", slicer.vtkSlicerVolumeResliceDriverLogic.MODE_AXIAL )
+    self.displayImageInSliceViewer( self.spineCT.GetID(), "Yellow", slicer.vtkSlicerVolumeResliceDriverLogic.MODE_SAGITTAL )
+    self.displayImageInSliceViewer( self.spineCT.GetID(), "Green", slicer.vtkSlicerVolumeResliceDriverLogic.MODE_CORONAL )
+    self.displayImageSliceIn3D( "Red", True )
+    self.displayImageSliceIn3D( "Yellow", True )
+    self.displayImageSliceIn3D( "Green", True )
     self.resetAllViews()
 
 
@@ -385,8 +387,10 @@ class LumbarTutorGuidelet( Guidelet ):
       camera0.SetViewUp( 0, 0, 1 )
       camera0.GetCamera().SetClippingRange( CAMERA_CLIPPING_RANGE )
 
-    # For the CT images, take the slice at the origin and centre it
-    slicer.vtkMRMLSliceNode.JumpAllSlices( slicer.mrmlScene, 0, 0, 0, slicer.vtkMRMLSliceNode.CenteredJumpSlice )
+    # Redisplay the image in the slice viewers. This will re-center them.
+    self.displayImageInSliceViewer( self.spineCT.GetID(), "Red", slicer.vtkSlicerVolumeResliceDriverLogic.MODE_AXIAL )
+    self.displayImageInSliceViewer( self.spineCT.GetID(), "Yellow", slicer.vtkSlicerVolumeResliceDriverLogic.MODE_SAGITTAL )
+    self.displayImageInSliceViewer( self.spineCT.GetID(), "Green", slicer.vtkSlicerVolumeResliceDriverLogic.MODE_CORONAL )
 
 
   def addActionsToUltrasoundPanel( self ):
@@ -537,7 +541,18 @@ class LumbarTutorGuidelet( Guidelet ):
     logging.info( "LumbarTutorGuidelet::setLayoutForCurrentUser: Could not find user with ID: " + self.userID + "." )
     self.layoutManager.setLayout( slicer.vtkMRMLLayoutNode.SlicerLayoutNone )
     return False
-    
+
+
+  def showModelsInSliceViewers( self ):
+    # To determine whether we should show the models in the slice view, check if the user is shown the active view
+    show = False
+    viewNode = self.layoutManager.activeMRMLThreeDViewNode()
+    if ( viewNode is not None ):
+      show = viewNode.IsViewVisibleInLayout()
+
+    # Show/hide the appropriate models
+    self.spineModel.GetDisplayNode().SetSliceIntersectionVisibility( show )
+    self.needleModel.GetDisplayNode().SetSliceIntersectionVisibility( show )
 
 
   def getCamera( self, viewName ):
@@ -549,14 +564,21 @@ class LumbarTutorGuidelet( Guidelet ):
     return camera
 
     
-  def displayImageInSliceViewer( self, imageNodeID, sliceName ):
+  def displayImageInSliceViewer( self, imageNodeID, sliceName, mode ):
+    # First, find the volume reslice driver logic
     sliceWidget = slicer.app.layoutManager().sliceWidget( sliceName )
     if ( sliceWidget is None ):
       return
+
+    vrdLogic = slicer.modules.volumereslicedriver.logic()
+    if ( vrdLogic ):
+      sliceNode = sliceWidget.sliceView().mrmlSliceNode()
+      vrdLogic.SetModeForSlice( mode, sliceNode )
+
     sliceLogic = sliceWidget.sliceLogic()
-    if ( sliceLogic is None ):
-      return
-    sliceLogic.GetSliceCompositeNode().SetBackgroundVolumeID( imageNodeID )    
+    if ( sliceLogic ):
+      sliceLogic.GetSliceCompositeNode().SetBackgroundVolumeID( imageNodeID )
+      sliceLogic.FitSliceToAll()
 
 
   def displayImageSliceIn3D( self, sliceName, visible ):
