@@ -217,13 +217,13 @@ class LumbarTutorGuidelet( Guidelet ):
     logging.debug( 'Create transforms' )
 
     # The transforms to be received from PLUS      
-    self.needleToReference = slicer.util.getNode( 'NeedleToReference' )
+    self.needleToReference = slicer.mrmlScene.GetFirstNodeByName( 'NeedleToReference' )
     if not self.needleToReference:
       self.needleToReference = slicer.vtkMRMLLinearTransformNode()
       self.needleToReference.SetName( 'NeedleToReference' )
       slicer.mrmlScene.AddNode( self.needleToReference )
 
-    self.needleTipToNeedle = slicer.util.getNode( 'NeedleTipToNeedle' )
+    self.needleTipToNeedle = slicer.mrmlScene.GetFirstNodeByName( 'NeedleTipToNeedle' )
     if not self.needleTipToNeedle:
       self.needleTipToNeedle = slicer.vtkMRMLLinearTransformNode()
       self.needleTipToNeedle.SetName( 'NeedleTipToNeedle' )
@@ -235,12 +235,12 @@ class LumbarTutorGuidelet( Guidelet ):
     # Models
     logging.debug( 'Create models' )
 
-    self.needleModel = slicer.util.getNode( 'NeedleModel' )
+    self.needleModel = slicer.mrmlScene.GetFirstNodeByName( 'NeedleModel' )
     if not self.needleModel:
       self.needleModel = slicer.modules.createmodels.logic().CreateNeedle(80, 1.0, 0, 0)
       self.needleModel.SetName( 'NeedleModel' )
       
-    self.spineModel = slicer.util.getNode( 'SpineVisibleModel' )
+    self.spineModel = slicer.mrmlScene.GetFirstNodeByName( 'SpineVisibleModel' )
     if not self.spineModel:
       self.spineModel = slicer.vtkMRMLModelNode()
       self.spineModel.SetName( 'SpineVisibleModel' )
@@ -250,7 +250,7 @@ class LumbarTutorGuidelet( Guidelet ):
       self.spineModel.GetDisplayNode().SetColor( 0.95, 0.85, 0.55 ) #bone
       self.spineModel.SetAndObservePolyData( vtk.vtkPolyData() )
       
-    self.tissueModel = slicer.util.getNode( 'TissueModel' )
+    self.tissueModel = slicer.mrmlScene.GetFirstNodeByName( 'TissueModel' )
     if not self.tissueModel:
       self.tissueModel = slicer.vtkMRMLModelNode()
       self.tissueModel.SetName( 'TissueModel' )
@@ -264,7 +264,7 @@ class LumbarTutorGuidelet( Guidelet ):
     # Images
     logging.debug( 'Create images' )
     
-    self.spineCT = slicer.util.getNode( 'SpineCT' )
+    self.spineCT = slicer.mrmlScene.GetFirstNodeByName( 'SpineCT' )
     if not self.spineCT:
       self.spineCT = slicer.vtkMRMLScalarVolumeNode()
       self.spineCT.SetName( 'SpineCT' )
@@ -402,8 +402,11 @@ class LumbarTutorGuidelet( Guidelet ):
     self.recordingsTable = qt.QTableWidget()
     self.recordingsTable.setRowCount( 0 )
     self.recordingsTable.setColumnCount( 1 )
-    self.recordingsTable.horizontalHeader().setResizeMode( 0, qt.QHeaderView.Stretch )
     self.recordingsTable.setHorizontalHeaderLabels( [ "Recording name" ] )
+    if ( qt.qVersion()[0] == '5' ): # Used instead of SLICER_HAVE_QT5
+      self.recordingsTable.horizontalHeader().setSectionResizeMode(0, qt.QHeaderView.Stretch)
+    else:
+      self.recordingsTable.horizontalHeader().setResizeMode(0, qt.QHeaderView.Stretch)
     
     # Logout
     self.logoutButton = qt.QPushButton( 'Save + Logout' )
@@ -533,7 +536,7 @@ class LumbarTutorGuidelet( Guidelet ):
       
     for currUserGroupName in self.userLayouts:
       currUserGroupFile = open( os.path.join( self.moduleDirectory, 'Resources', 'UserGroups', currUserGroupName + ".txt" ) )
-      currUserGroupIDs = currUserGroupFile.readlines()
+      currUserGroupIDs = currUserGroupFile.read().splitlines()
       if ( self.userID in currUserGroupIDs ):
         self.layoutManager.setLayout( self.userLayouts[ currUserGroupName ] )
         return True
@@ -560,7 +563,7 @@ class LumbarTutorGuidelet( Guidelet ):
     Get camera for the selected 3D view
     """
     camerasLogic = slicer.modules.cameras.logic()
-    camera = camerasLogic.GetViewActiveCameraNode( slicer.util.getNode( viewName ) )
+    camera = camerasLogic.GetViewActiveCameraNode( slicer.mrmlScene.GetFirstNodeByName( viewName ) )
     return camera
 
     
