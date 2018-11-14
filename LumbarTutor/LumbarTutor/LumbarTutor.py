@@ -177,13 +177,13 @@ class LumbarTutorGuidelet( Guidelet ):
     
 
   def __del__( self ):#common
-    self.cleanup()
+    self.preCleanup()
 
 
   # Clean up when guidelet is closed
-  def cleanup( self ): #common
-    Guidelet.cleanup( self )
-    logging.debug( 'cleanup' )
+  def preCleanup( self ): #common
+    Guidelet.preCleanup( self )
+    logging.debug( 'preCleanup' )
 
 
   def setupConnections( self ):
